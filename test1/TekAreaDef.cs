@@ -157,31 +157,7 @@ namespace test1
             result.Shift(-result.xMinimum(), -result.yMinimum());
             return result;
         }
-        public void MatrixDump(StreamWriter sw)
-        {
-            int[,] matrix = AsMatrix();
-            for (int i = 0; i < matrix.GetLength(0); i++)
-            {
-                sw.Write(String.Format("{0}: ", i));
-                for (int j = 0; j < matrix.GetLength(1); j++)
-                    sw.Write(String.Format("{0,2} ", matrix[i, j]));
-                sw.WriteLine();
-            }
-        }
-
-        public int[,] AsMatrix()
-        {
-            int[,] result = new int[xSize, ySize];
-            for (int i = 0; i < xSize; i++)
-                for (int j = 0; j < ySize; j++)
-                    result[i, j] = -1;
-            for (int i = 0; i < Points.Count; i++)
-            {
-                result[Points[i].X - xMinimum(), Points[i].Y - yMinimum()] = i;
-            }
-            return result;
-        }
-
+        
         public bool Equals(TekAreaDef other)
         {
             TekAreaDef N1 = this.Normalized();
