@@ -19,12 +19,12 @@ namespace test1
             //T2.Normalized().MatrixDump(sw);
 
             //T2.FlipHorizontal().Dump(sw, "T2 flipped");
-            //TekAreaDef T3 = new TekAreaDef(new Point(3, 4), new Point(4, 4), new Point(5, 4),
-            //    new Point(6, 4), new Point(6, 5)
-            //    );
-            //T3.Normalized().Dump(sw, "T3");
-            //T3.FlipHorizontal().Dump(sw, "T3 h flipped");
-            //T3.FlipVertical().Dump(sw, "T3 v flipped");
+            TekAreaDef T3 = new TekAreaDef(new Point(3, 4), new Point(4, 4), new Point(5, 4),
+                new Point(6, 4), new Point(6, 5)
+                );
+            T3.Normalized().Dump(sw, "T3");
+            T3.FlipHorizontal().Dump(sw, "T3 h flipped");
+            T3.FlipVertical().Dump(sw, "T3 v flipped");
             ////T3.MatrixDump(sw);
 
             //T3.FlipHorizontal().Dump(sw, "T3 flipped");
