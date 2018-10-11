@@ -234,6 +234,27 @@ namespace test1
             }
             sw.WriteLine();
         }
+
+        private bool IsInList(List<TekAreaDef> list)
+        {
+            foreach (TekAreaDef value in list)
+                if (this.Equals(value))
+                    return true;
+            return false;
+        }
+
+        public List<TekAreaDef> GetAlternatives()
+        {
+            List<TekAreaDef> result = new List<TekAreaDef>();
+            result.Add(this.Normalized());
+            // 4 rotations
+            TekAreaDef tem = this.Rotate90();
+            if (!tem.IsInList(result))
+                result.Add(tem);
+
+
+            return result;
+        }
     }
 
     class TekStandardAreas
