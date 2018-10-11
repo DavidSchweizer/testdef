@@ -46,8 +46,10 @@ namespace test1
 
         private void ComputeDeltas()
         {
-            Point P = Points[0];
             Deltas.Clear();
+            if (Points.Count == 0)
+                return;
+            Point P = Points[0];
             for (int i = 1; i < Points.Count; i++)
                 Deltas.Add(new Point(Points[i].X - P.X, Points[i].Y - P.Y));
         }
@@ -155,6 +157,30 @@ namespace test1
             result.Shift(-result.xMinimum(), -result.yMinimum());
             return result;
         }
+        public void MatrixDump(StreamWriter sw)
+        {
+            int[,] matrix = AsMatrix();
+            for (int i = 0; i < matrix.GetLength(0); i++)
+            {
+                sw.Write(String.Format("{0}: ", i));
+                for (int j = 0; j < matrix.GetLength(1); j++)
+                    sw.Write(String.Format("{0,2} ", matrix[i, j]));
+                sw.WriteLine();
+            }
+        }
+
+        public int[,] AsMatrix()
+        {
+            int[,] result = new int[xSize, ySize];
+            for (int i = 0; i < xSize; i++)
+                for (int j = 0; j < ySize; j++)
+                    result[i, j] = -1;
+            for (int i = 0; i < Points.Count; i++)
+            {
+                result[Points[i].X - xMinimum(), Points[i].Y - yMinimum()] = i;
+            }
+            return result;
+        }
 
         public bool Equals(TekAreaDef other)
         {
@@ -175,20 +201,29 @@ namespace test1
             DebugLog.Flush();
         }
 
+        public TekAreaDef FlipVertical()
+        {
+            TekAreaDef result = new TekAreaDef();
+
+            int yMax = yMaximum();
+            for (int i = 0; i < Points.Count; i++)
+            {
+                Point P = Points[i];
+                result.Points.Add(new Point(P.X, yMax - P.Y));
+            }
+            return result.Normalized();
+        }
+
         public TekAreaDef FlipHorizontal()
         {
-            TekAreaDef result = this.Normalized();
-            result.Dump(DebugLog, "before flip");
-            for (int i = 0; i < Points.Count / 2; i ++)
-            {                
-                int i2 = Points.Count - 1 - i;
-                Swap(result.Points, i, i2);
-                result.Dump(DebugLog, String.Format("after i = {0},  i2 = {1}", i, i2));
+            TekAreaDef result = new TekAreaDef();
+            int xMax = xMaximum();
+            for (int i = 0; i < Points.Count; i++)
+            {
+                Point P = Points[i];
+                result.Points.Add(new Point(xMax - P.X, P.Y));
             }
-            result.ComputeDeltas();
-            result.ComputeSize();
-            Debug("flipped");
-            return result;
+            return result.Normalized();
         }
 
         public TekAreaDef Rotate90()
