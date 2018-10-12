@@ -26,10 +26,10 @@ namespace test1
             initLists();
             foreach (Point point in value.Points)
                 Points.Add(new Point(point.X, point.Y));
-            foreach (Point point in value.Deltas)
-                Deltas.Add(new Point(point.X, point.Y));
-            ComputeSize();
+            Update();
         }
+
+        public int PointCount { get { return Points.Count;  } }
 
         public TekAreaDef(params Point[] values)
         {
@@ -40,8 +40,7 @@ namespace test1
                     throw new Exception(String.Format("Too many values for area: already {0} fields present", Points.Count));
                 Points.Add(value);
             }
-            ComputeDeltas();
-            ComputeSize();
+            Update();
         }
 
         private void ComputeDeltas()
@@ -64,6 +63,12 @@ namespace test1
             }
             xSize = 1 + xMaximum() - xMinimum();
             ySize = 1 + yMaximum() - yMinimum();
+        }
+
+        private void Update()
+        {
+            ComputeSize();
+            ComputeDeltas();
         }
 
         private int xMinimum()
@@ -177,6 +182,12 @@ namespace test1
             DebugLog.Flush();
         }
 
+        private void AddPoint(Point P)
+        {
+            Points.Add(P);
+            Update();
+        }
+
         public TekAreaDef FlipVertical()
         {
             TekAreaDef result = new TekAreaDef();
@@ -185,9 +196,9 @@ namespace test1
             for (int i = 0; i < Points.Count; i++)
             {
                 Point P = Points[i];
-                result.Points.Add(new Point(P.X, yMax - P.Y));
+                result.AddPoint(new Point(P.X, yMax - P.Y));
             }
-            return result.Normalized();
+            return result;
         }
 
         public TekAreaDef FlipHorizontal()
@@ -197,9 +208,9 @@ namespace test1
             for (int i = 0; i < Points.Count; i++)
             {
                 Point P = Points[i];
-                result.Points.Add(new Point(xMax - P.X, P.Y));
+                result.AddPoint(new Point(xMax - P.X, P.Y));
             }
-            return result.Normalized();
+            return result;
         }
 
         public TekAreaDef Rotate90()
@@ -209,10 +220,9 @@ namespace test1
             {
                 result.Deltas.Add(new Point(-value.Y, value.X));
                 Point p = result.Deltas.ElementAt(result.Deltas.Count - 1);
-                result.Points.Add(new Point(this.Points[0].X + p.X, this.Points[0].Y + p.Y));
+                result.AddPoint(new Point(this.Points[0].X + p.X, this.Points[0].Y + p.Y));
             }
-            result.ComputeSize();
-            return result.Normalized();
+            return result;
         }
 
         public TekAreaDef Rotate180()
@@ -235,7 +245,7 @@ namespace test1
             sw.WriteLine();
         }
 
-        private bool IsInList(List<TekAreaDef> list)
+        public bool IsInList(List<TekAreaDef> list)
         {
             foreach (TekAreaDef value in list)
                 if (this.Equals(value))
@@ -243,63 +253,134 @@ namespace test1
             return false;
         }
 
+        private void AddAlternative(TekAreaDef area, List<TekAreaDef> list)
+        {
+            if (!area.IsInList(list))
+                list.Add(area);
+            TekAreaDef area2 = area.FlipHorizontal();
+            if (!area2.IsInList(list))
+                list.Add(area2);
+            area2 = area.FlipVertical();
+            if (!area2.IsInList(list))
+                list.Add(area2);
+        }
+
         public List<TekAreaDef> GetAlternatives()
         {
             List<TekAreaDef> result = new List<TekAreaDef>();
-            result.Add(this.Normalized());
-            // 4 rotations
-            TekAreaDef tem = this.Rotate90();
-            if (!tem.IsInList(result))
-                result.Add(tem);
-
-
+            AddAlternative(this.Normalized(), result);
+            // rotations
+            AddAlternative(this.Rotate90(), result);
+            AddAlternative(this.Rotate180(), result);
+            AddAlternative(this.Rotate180().Rotate90(), result);
             return result;
         }
+
+        public string[] AsAsciiArt(char NoChar = '.', char ShowChar = 'X')
+        {
+            string[] result = new string[ySize];
+            for (int i = 0; i < ySize; i++)
+                result[i] = new String(NoChar, xSize);
+            for (int i = 0; i < Points.Count; i++)
+            {
+                int xPos = Points[i].X - xMinimum();
+                int yPos = Points[i].Y - yMinimum();
+                result[yPos] = result[yPos].Substring(0, xPos) + ShowChar + 
+                    result[yPos].Substring(xPos + 1, xSize - xPos-1);
+            }
+            return result;
+        }
+
+        public void DumpAsAsciiArt(StreamWriter sw, char NoChar = '.', char ShowChar = 'X')
+        {
+            string[] art = AsAsciiArt(NoChar, ShowChar);
+            foreach (string s in art)
+                sw.WriteLine(s);
+            sw.Flush();
+        }
+
     }
 
     class TekStandardAreas
     {
-        List<TekAreaDef> values;
+        private List<TekAreaDef> values;
 
+        public TekAreaDef GetValue(int i) 
+        {
+            return values[i];
+        }
+        public int Count { get { return values.Count; } }
+        public int nCount(int nFields)
+        {
+            int result = 0;
+            foreach (TekAreaDef value in values)
+                if (value.PointCount == nFields)
+                    result++;
+            return result;
+        }
+
+        public TekAreaDef GetValue(int i, int nFields)
+        {
+            int j = i;
+            TekAreaDef result = null;
+            foreach(TekAreaDef value in values)
+            {
+                if (value.PointCount != nFields)
+                    continue;
+                if (j == 0)
+                {
+                    result = value;
+                    break;
+                }
+                j--;
+            }
+            return result;
+        }
+
+        private void AddAlternatives(TekAreaDef value)
+        {
+            foreach (TekAreaDef val in value.GetAlternatives())
+            if (!val.IsInList(values))
+                values.Add(val);
+        }
         private void Add1FieldAreas()
         {
-            values.Add(new TekAreaDef(new Point(0,0)));
+            AddAlternatives(new TekAreaDef(new Point(0, 0)));           
         }
         private void Add2FieldAreas()
         {
-            TekAreaDef newvalue = new TekAreaDef(new Point(0, 0), new Point(0, 1));
-            values.Add(newvalue);
-            values.Add(newvalue.Rotate180());
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1)));
         }
         private void Add3FieldAreas()
         {
-            TekAreaDef newvalue = new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2));
-            values.Add(newvalue);
-            values.Add(newvalue.Rotate180());
+            // straight
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2)));
             // cornered
-            newvalue = new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(1, 0));
-            values.Add(newvalue);
-            newvalue = newvalue.Rotate90();
-            values.Add(newvalue);
-            newvalue = newvalue.Rotate90();
-            values.Add(newvalue);
-            newvalue = newvalue.Rotate90();
-            values.Add(newvalue);
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(1, 0)));
         }
-
         private void Add4FieldAreas()
         {
             // straight
-            TekAreaDef newvalue = new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3));
-            values.Add(newvalue);
-            values.Add(newvalue.Rotate180());
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3)));
+            // cornered 1
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(1, 2)));
+            // cornered 2
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(1, 1)));
+            // big square
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(1, 0), new Point(1, 1)));
         }
         private void Add5FieldAreas()
         {
             // straight
-            TekAreaDef newvalue = new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3), new Point(0,4));
-            values.Add(newvalue);
-            values.Add(newvalue.Rotate180());
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3), new Point(0,4)));
+            // cornered 1
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(0, 3), new Point(1, 3)));
+            // cornered 2
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(1, 1), new Point(1, 2)));
+            // cornered 3
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(1, 2), new Point(2, 2)));
+            // cornered 4
+            AddAlternatives(new TekAreaDef(new Point(0, 0), new Point(0, 1), new Point(0, 2), new Point(1, 1), new Point(2, 1)));
         }
 
         public TekStandardAreas()
